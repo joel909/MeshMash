@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-
-    <style name="Theme.MeshMash" parent="android:Theme.Material.Light.NoActionBar" />
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme inheriting from Material3 Dark -->
+    <style name="Theme.MeshMash" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Customize status bar & navigation bar for dark theme -->
+        <item name="android:statusBarColor">#0F0F11</item>
+        <item name="android:navigationBarColor">#0F0F11</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
 </resources>
