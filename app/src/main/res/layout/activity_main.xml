@@ -7,10 +7,9 @@
     android:layout_height="match_parent"
     android:background="#0F0F11"
     android:fitsSystemWindows="true"
-    tools:context=".MainActivity"
-    tools:ignore="MissingClass">
+    tools:context=".MainActivity">
 
-    <!-- Top App Bar & Offline Header -->
+    <!-- Top App Bar -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
@@ -30,6 +29,7 @@
 
         <!-- Status Banner -->
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/bannerOffline"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
@@ -77,6 +77,7 @@
                 </LinearLayout>
 
                 <TextView
+                    android:id="@+id/tvPendingCount"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="#3D2914"
@@ -91,6 +92,7 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/nestedScrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
@@ -98,11 +100,12 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:animateLayoutChanges="true"
             android:clipToPadding="false"
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Section Header: GPS -->
+            <!-- Location Section Header -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -153,6 +156,7 @@
                                     app:tint="#60A5FA" />
 
                                 <TextView
+                                    android:id="@+id/tvCoordinates"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="4dp"
@@ -164,6 +168,7 @@
                             </LinearLayout>
 
                             <TextView
+                                android:id="@+id/tvAccuracyAlt"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
@@ -189,7 +194,7 @@
                             app:iconTint="#60A5FA" />
                     </RelativeLayout>
 
-                    <!-- Map Container Preview -->
+                    <!-- Tactical Map Placeholder -->
                     <com.google.android.material.card.MaterialCardView
                         android:layout_width="match_parent"
                         android:layout_height="120dp"
@@ -211,7 +216,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_gravity="center"
-                                android:text="Tap to Expand Map"
+                                android:text="Map Area Active"
                                 android:textColor="#A1A1AA"
                                 android:textSize="12sp" />
                         </FrameLayout>
@@ -219,18 +224,17 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Section Header: Category -->
+            <!-- Step 1: Category Selection -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="REPORT CATEGORY"
+                android:text="STEP 1: SELECT CATEGORY"
                 android:textColor="#9E9E9E"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.08" />
 
-            <!-- Report Type Selection Grid -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -242,8 +246,9 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
 
-                    <!-- Medical Item -->
+                    <!-- Medical -->
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardMedical"
                         android:layout_width="0dp"
                         android:layout_height="80dp"
                         android:layout_margin="4dp"
@@ -277,18 +282,19 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Water Item -->
+                    <!-- Water -->
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardWater"
                         android:layout_width="0dp"
                         android:layout_height="80dp"
                         android:layout_margin="4dp"
                         android:layout_weight="1"
                         android:clickable="true"
                         android:focusable="true"
-                        app:cardBackgroundColor="#0C4A6E"
+                        app:cardBackgroundColor="#18181B"
                         app:cardCornerRadius="12dp"
-                        app:strokeColor="#38BDF8"
-                        app:strokeWidth="2dp">
+                        app:strokeColor="#27272A"
+                        app:strokeWidth="1dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -308,13 +314,13 @@
                                 android:layout_marginTop="6dp"
                                 android:text="Water"
                                 android:textColor="#FFFFFF"
-                                android:textSize="12sp"
-                                android:textStyle="bold" />
+                                android:textSize="12sp" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Food Item -->
+                    <!-- Food -->
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardFood"
                         android:layout_width="0dp"
                         android:layout_height="80dp"
                         android:layout_margin="4dp"
@@ -354,8 +360,9 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
 
-                    <!-- Shelter Item -->
+                    <!-- Shelter -->
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardShelter"
                         android:layout_width="0dp"
                         android:layout_height="80dp"
                         android:layout_margin="4dp"
@@ -389,8 +396,9 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Missing People Item -->
+                    <!-- Missing People -->
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardMissingPeople"
                         android:layout_width="0dp"
                         android:layout_height="80dp"
                         android:layout_margin="4dp"
@@ -424,8 +432,9 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Other Item -->
+                    <!-- Other -->
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardOther"
                         android:layout_width="0dp"
                         android:layout_height="80dp"
                         android:layout_margin="4dp"
@@ -461,158 +470,173 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Section Header: Priority -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="PRIORITY LEVEL"
-                android:textColor="#9E9E9E"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.08" />
-
-            <!-- Segmented Priority Button Toggle -->
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/priorityToggleGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:selectionRequired="true"
-                app:singleSelection="true">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnLow"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:paddingHorizontal="0dp"
-                    android:insetLeft="0dp"
-                    android:insetRight="0dp"
-                    android:text="Low"
-                    android:textSize="11sp"
-                    android:textColor="#A1A1AA"
-                    app:strokeColor="#27272A" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnMedium"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:paddingHorizontal="0dp"
-                    android:insetLeft="0dp"
-                    android:insetRight="0dp"
-                    android:text="Medium"
-                    android:textSize="11sp"
-                    android:textColor="#A1A1AA"
-                    app:strokeColor="#27272A" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnHigh"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:paddingHorizontal="0dp"
-                    android:insetLeft="0dp"
-                    android:insetRight="0dp"
-                    android:backgroundTint="#D97706"
-                    android:text="High"
-                    android:textSize="11sp"
-                    android:textColor="#FFFFFF"
-                    app:strokeColor="#D97706" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCritical"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:paddingHorizontal="0dp"
-                    android:insetLeft="0dp"
-                    android:insetRight="0dp"
-                    android:text="Critical"
-                    android:textSize="11sp"
-                    android:textColor="#A1A1AA"
-                    app:strokeColor="#27272A" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
-
-            <!-- Section Header: Incident Notes -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="INCIDENT DETAILS"
-                android:textColor="#9E9E9E"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.08" />
-
-            <!-- Material 3 Text Field -->
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:boxBackgroundColor="#18181B"
-                app:boxCornerRadiusBottomEnd="12dp"
-                app:boxCornerRadiusBottomStart="12dp"
-                app:boxCornerRadiusTopEnd="12dp"
-                app:boxCornerRadiusTopStart="12dp"
-                app:boxStrokeColor="#3F3F46"
-                app:hintEnabled="false">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:layout_width="match_parent"
-                    android:layout_height="120dp"
-                    android:gravity="top|start"
-                    android:hint="Provide clear contextual details about the incident..."
-                    android:padding="16dp"
-                    android:textColor="#FFFFFF"
-                    android:textColorHint="#71717A"
-                    android:textSize="14sp" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <!-- Submit Action -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSave"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="28dp"
-                android:text="Sync Across Mesh Network"
-                android:textColor="#09090B"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                app:backgroundTint="#60A5FA"
-                app:cornerRadius="12dp"
-                app:icon="@drawable/ic_save"
-                app:iconGravity="textStart"
-                app:iconTint="#09090B" />
-
-            <!-- Queued Badge Indicator -->
+            <!-- Step 2: Priority Selection (Revealed after Category selection) -->
             <LinearLayout
+                android:id="@+id/sectionPriority"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="24dp"
-                android:gravity="center"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
-                    android:src="@drawable/ic_sync"
-                    app:tint="#71717A" />
+                android:orientation="vertical"
+                android:visibility="gone">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:text="Will queue locally as ID: FR-092"
-                    android:textColor="#71717A"
-                    android:textSize="12sp" />
+                    android:layout_marginTop="24dp"
+                    android:text="STEP 2: PRIORITY LEVEL"
+                    android:textColor="#9E9E9E"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/priorityToggleGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:selectionRequired="false"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnLow"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:paddingHorizontal="0dp"
+                        android:insetLeft="0dp"
+                        android:insetRight="0dp"
+                        android:text="Low"
+                        android:textSize="11sp"
+                        android:textColor="#A1A1AA"
+                        app:strokeColor="#27272A" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnMedium"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:paddingHorizontal="0dp"
+                        android:insetLeft="0dp"
+                        android:insetRight="0dp"
+                        android:text="Medium"
+                        android:textSize="11sp"
+                        android:textColor="#A1A1AA"
+                        app:strokeColor="#27272A" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnHigh"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:paddingHorizontal="0dp"
+                        android:insetLeft="0dp"
+                        android:insetRight="0dp"
+                        android:text="High"
+                        android:textSize="11sp"
+                        android:textColor="#A1A1AA"
+                        app:strokeColor="#27272A" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCritical"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:paddingHorizontal="0dp"
+                        android:insetLeft="0dp"
+                        android:insetRight="0dp"
+                        android:text="Critical"
+                        android:textSize="11sp"
+                        android:textColor="#A1A1AA"
+                        app:strokeColor="#27272A" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </LinearLayout>
+
+            <!-- Step 3: Incident Details & Save (Revealed after Priority selection) -->
+            <LinearLayout
+                android:id="@+id/sectionIncidentDetails"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="STEP 3: INCIDENT DETAILS"
+                    android:textColor="#9E9E9E"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:boxBackgroundColor="#18181B"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:boxStrokeColor="#3F3F46"
+                    app:hintEnabled="false">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etIncidentNotes"
+                        android:layout_width="match_parent"
+                        android:layout_height="120dp"
+                        android:gravity="top|start"
+                        android:hint="Provide clear contextual details about the incident..."
+                        android:padding="16dp"
+                        android:textColor="#FFFFFF"
+                        android:textColorHint="#71717A"
+                        android:textSize="14sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Save Action -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSave"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="28dp"
+                    android:text="Save Report Offline"
+                    android:textColor="#09090B"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="#60A5FA"
+                    app:cornerRadius="12dp"
+                    app:icon="@drawable/ic_save"
+                    app:iconGravity="textStart"
+                    app:iconTint="#09090B" />
+
+                <!-- Queue Indicator -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="24dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_sync"
+                        app:tint="#71717A" />
+
+                    <TextView
+                        android:id="@+id/tvReportId"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="Will queue locally as ID: FR-092"
+                        android:textColor="#71717A"
+                        android:textSize="12sp" />
+                </LinearLayout>
             </LinearLayout>
 
         </LinearLayout>
