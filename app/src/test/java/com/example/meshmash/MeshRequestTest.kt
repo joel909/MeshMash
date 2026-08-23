@@ -37,6 +37,14 @@ class MeshRequestTest {
     }
 
     @Test
+    fun emergencyRetryIntervalDoesNotTriggerAndroidScanThrottle() {
+        val now = 10_000_000L
+        val request = request(createdAt = now - 60_000, priority = RequestPriority.EMERGENCY)
+
+        assertTrue(MeshForwardingPolicy.intervalMillis(request, now) >= 10_000L)
+    }
+
+    @Test
     fun resolvedRequestsAreNeverForwarded() {
         val request = request(createdAt = 0, status = RequestStatus.RESOLVED)
         assertFalse(MeshForwardingPolicy.shouldForward(request, 1_000_000))

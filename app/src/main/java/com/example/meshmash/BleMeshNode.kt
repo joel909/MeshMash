@@ -45,6 +45,11 @@ class BleMeshNode(
     private var sending = false
     private var negotiatedMtu = DEFAULT_MTU
     private var scanResultsSeen = 0
+    private val incompatiblePeerAddresses = mutableSetOf<String>()
+    private val scanSettings = ScanSettings.Builder()
+        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+        .setReportDelay(0)
+        .build()
 
     private val sendTimeout: Runnable = Runnable {
         if (!sending) return@Runnable
@@ -128,12 +133,9 @@ class BleMeshNode(
         sending = true
         negotiatedMtu = DEFAULT_MTU
         scanResultsSeen = 0
+        incompatiblePeerAddresses.clear()
         onStatus("Looking for a listening phone…")
-        val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .setReportDelay(0)
-            .build()
-        scanner.startScan(null, settings, scanCallback)
+        scanner.startScan(null, scanSettings, scanCallback)
         mainHandler.removeCallbacks(sendTimeout)
         mainHandler.postDelayed(sendTimeout, SEND_TIMEOUT_MS)
         return true
@@ -189,6 +191,19 @@ class BleMeshNode(
         if (notify) onSendFinished(false)
     }
 
+    private fun ignoreIncompatiblePeerAndContinue(gatt: BluetoothGatt) {
+        incompatiblePeerAddresses += gatt.device.address
+        if (clientGatt === gatt) clientGatt = null
+        gatt.disconnect()
+        gatt.close()
+        negotiatedMtu = DEFAULT_MTU
+        if (!sending) return
+        onStatus("Incompatible listener skipped; still looking…")
+        val scanner = adapter?.bluetoothLeScanner
+            ?: return failSend("BLE scanning is unavailable")
+        scanner.startScan(null, scanSettings, scanCallback)
+    }
+
     private fun stopSending() {
         mainHandler.removeCallbacks(sendTimeout)
         adapter?.bluetoothLeScanner?.stopScan(scanCallback)
@@ -198,6 +213,7 @@ class BleMeshNode(
         pendingPayload = null
         sending = false
         negotiatedMtu = DEFAULT_MTU
+        incompatiblePeerAddresses.clear()
     }
 
     private fun stopListening() {
@@ -223,6 +239,7 @@ class BleMeshNode(
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             if (!sending || clientGatt != null) return
+            if (result.device.address in incompatiblePeerAddresses) return
             scanResultsSeen++
             val scanRecord = result.scanRecord
             val serviceMatches = scanRecord?.serviceUuids?.any {
@@ -234,7 +251,12 @@ class BleMeshNode(
             if (!serviceMatches && !markerMatches) return
             adapter?.bluetoothLeScanner?.stopScan(this)
             onStatus("Listener found; connecting…")
-            clientGatt = result.device.connectGatt(appContext, false, clientCallback)
+            clientGatt = result.device.connectGatt(
+                appContext,
+                false,
+                clientCallback,
+                BluetoothDevice.TRANSPORT_LE,
+            )
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -249,9 +271,12 @@ class BleMeshNode(
                 onStatus("Connected; preparing data…")
                 if (!gatt.requestMtu(REQUESTED_MTU)) gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                val wasActiveConnection = clientGatt === gatt
                 gatt.close()
-                if (clientGatt === gatt) clientGatt = null
-                if (sending) failSend("Connection ended before data was sent")
+                if (wasActiveConnection) clientGatt = null
+                if (sending && wasActiveConnection) {
+                    failSend("Connection ended before data was sent")
+                }
             } else if (status != BluetoothGatt.GATT_SUCCESS) {
                 failSend("Connection failed (Bluetooth error $status)")
             }
@@ -264,8 +289,14 @@ class BleMeshNode(
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            if (status == BluetoothGatt.GATT_SUCCESS) writePendingData(gatt)
-            else failSend("Could not discover listener service (error $status)")
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                failSend("Could not discover listener service (error $status)")
+                return
+            }
+            val characteristic = gatt.getService(MESH_SERVICE_UUID)
+                ?.getCharacteristic(MESSAGE_CHARACTERISTIC_UUID)
+            if (characteristic == null) ignoreIncompatiblePeerAndContinue(gatt)
+            else writePendingData(gatt)
         }
 
         override fun onCharacteristicWrite(

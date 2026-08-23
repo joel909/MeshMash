@@ -6,6 +6,7 @@ import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -80,6 +81,7 @@ class MainActivity : AppCompatActivity() {
         meshManager = MeshStoreForwardManager(
             context = this,
             onStatus = { message ->
+                Log.i(BLE_LOG_TAG, message)
                 if (message.startsWith("No ") || message.contains("failed", ignoreCase = true)) {
                     runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_SHORT).show() }
                 }
@@ -337,6 +339,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val BLE_LOG_TAG = "MeshMashBLE"
         private val BLE_PERMISSIONS = arrayOf(
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,

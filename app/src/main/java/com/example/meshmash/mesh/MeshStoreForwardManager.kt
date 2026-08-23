@@ -3,6 +3,7 @@ package com.example.meshmash.mesh
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import com.example.meshmash.BleMeshNode
 import java.io.Closeable
 import java.util.ArrayDeque
@@ -20,7 +21,10 @@ class MeshStoreForwardManager(
     private val forwardingQueue = ArrayDeque<UUID>()
     private val queuedIds = mutableSetOf<UUID>()
     private var sendingRequestId: UUID? = null
+    private var nextBackgroundSendAtElapsedMillis = 0L
     private var started = false
+
+    private val sendNextAfterCooldown = Runnable { sendNext() }
 
     private val forwardingTick = object : Runnable {
         override fun run() {
@@ -71,6 +75,9 @@ class MeshStoreForwardManager(
 
     /** Gives an explicit user tap priority over automatic retries already in progress. */
     private fun sendImmediately(request: MeshRequest) {
+        // A real user tap always bypasses the background retry throttle.
+        nextBackgroundSendAtElapsedMillis = 0L
+        mainHandler.removeCallbacks(sendNextAfterCooldown)
         val interruptedRequestId = sendingRequestId
         if (interruptedRequestId != null) {
             sendingRequestId = null
@@ -109,6 +116,12 @@ class MeshStoreForwardManager(
 
     private fun sendNext() {
         if (sendingRequestId != null) return
+        val retryDelay = nextBackgroundSendAtElapsedMillis - SystemClock.elapsedRealtime()
+        if (retryDelay > 0) {
+            mainHandler.removeCallbacks(sendNextAfterCooldown)
+            mainHandler.postDelayed(sendNextAfterCooldown, retryDelay)
+            return
+        }
         while (forwardingQueue.isNotEmpty()) {
             val requestId = forwardingQueue.removeFirst()
             queuedIds.remove(requestId)
@@ -126,16 +139,22 @@ class MeshStoreForwardManager(
         }
     }
 
-    private fun onSendFinished(deliveredToAnyDevice: Boolean) {
+    private fun onSendFinished(@Suppress("UNUSED_PARAMETER") deliveredToAnyDevice: Boolean) {
         val requestId = sendingRequestId
         sendingRequestId = null
-        if (deliveredToAnyDevice && requestId != null) store.markForwarded(requestId)
+        // Record every completed radio attempt, not only successful writes. Without this, a peer
+        // with a stale/incompatible GATT service causes an immediate scan loop and Android blocks
+        // MeshMash with SCAN_FAILED_SCANNING_TOO_FREQUENTLY.
+        if (requestId != null) store.markForwarded(requestId)
+        nextBackgroundSendAtElapsedMillis =
+            SystemClock.elapsedRealtime() + BACKGROUND_SEND_COOLDOWN_MILLIS
         sendNext()
     }
 
     override fun close() {
         started = false
         mainHandler.removeCallbacks(forwardingTick)
+        mainHandler.removeCallbacks(sendNextAfterCooldown)
         node.stop()
         store.close()
     }
@@ -143,5 +162,6 @@ class MeshStoreForwardManager(
     companion object {
         // Check frequently enough to support the first three minutes' five-second burst schedule.
         private const val FORWARDING_TICK_MILLIS = 1_000L
+        private const val BACKGROUND_SEND_COOLDOWN_MILLIS = 7_000L
     }
 }

@@ -156,11 +156,11 @@ object MeshForwardingPolicy {
         return when (request.priority) {
             RequestPriority.CRITICAL,
             RequestPriority.EMERGENCY,
-            -> (baseInterval / 2).coerceAtLeast(5 * SECOND)
+            -> (baseInterval / 2).coerceAtLeast(10 * SECOND)
             RequestPriority.HIGH,
             RequestPriority.IMPORTANT,
-            -> (baseInterval * 3 / 4).coerceAtLeast(5 * SECOND)
-            RequestPriority.MEDIUM -> (baseInterval * 7 / 8).coerceAtLeast(5 * SECOND)
+            -> (baseInterval * 3 / 4).coerceAtLeast(10 * SECOND)
+            RequestPriority.MEDIUM -> (baseInterval * 7 / 8).coerceAtLeast(10 * SECOND)
             RequestPriority.LOW,
             RequestPriority.NORMAL,
             -> baseInterval
