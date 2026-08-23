@@ -9,7 +9,6 @@
     android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
-    <!-- Top App Bar -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
@@ -47,11 +46,12 @@
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="12dp">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_offline_pin"
-                    app:tint="#FFB74D" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚠"
+                    android:textColor="#FFB74D"
+                    android:textSize="18sp" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -100,136 +100,60 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:animateLayoutChanges="true"
             android:clipToPadding="false"
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Location Section Header -->
+            <!-- Section Header: Location Map -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="LOCATION DATA"
+                android:text="INCIDENT LOCATION (OPENSTREETMAP)"
                 android:textColor="#9E9E9E"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.08" />
 
-            <!-- GPS Card -->
+            <!-- OpenStreetMap Container -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="200dp"
                 android:layout_marginTop="8dp"
                 app:cardBackgroundColor="#18181B"
                 app:cardCornerRadius="16dp"
                 app:strokeColor="#27272A"
                 app:strokeWidth="1dp">
 
-                <LinearLayout
+                <RelativeLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_height="match_parent">
 
-                    <RelativeLayout
+                    <org.osmdroid.views.MapView
+                        android:id="@+id/mapView"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
+                        android:layout_height="match_parent" />
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_alignParentStart="true"
-                            android:layout_toStartOf="@id/btnRecalibrate"
-                            android:layout_marginEnd="8dp"
-                            android:orientation="vertical">
-
-                            <LinearLayout
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <ImageView
-                                    android:layout_width="16dp"
-                                    android:layout_height="16dp"
-                                    android:src="@drawable/ic_location_on"
-                                    app:tint="#60A5FA" />
-
-                                <TextView
-                                    android:id="@+id/tvCoordinates"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="4dp"
-                                    android:text="34.0522° N, 118.2437° W"
-                                    android:textColor="#FFFFFF"
-                                    android:textSize="13sp"
-                                    android:textStyle="bold"
-                                    android:singleLine="true" />
-                            </LinearLayout>
-
-                            <TextView
-                                android:id="@+id/tvAccuracyAlt"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="Accuracy: ±4m  •  Altitude: 85m"
-                                android:textColor="#9CA3AF"
-                                android:textSize="11sp" />
-                        </LinearLayout>
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnRecalibrate"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_alignParentEnd="true"
-                            android:layout_centerVertical="true"
-                            android:paddingHorizontal="10dp"
-                            android:text="Recalibrate"
-                            android:textColor="#60A5FA"
-                            android:textSize="11sp"
-                            app:backgroundTint="#1E293B"
-                            app:icon="@drawable/ic_my_location"
-                            app:iconSize="14dp"
-                            app:iconTint="#60A5FA" />
-                    </RelativeLayout>
-
-                    <!-- Tactical Map Placeholder -->
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="match_parent"
-                        android:layout_height="120dp"
-                        android:layout_marginTop="12dp"
-                        app:cardBackgroundColor="#27272A"
-                        app:cardCornerRadius="12dp"
-                        app:strokeWidth="0dp">
-
-                        <FrameLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent">
-
-                            <View
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:background="#232326" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="center"
-                                android:text="Map Area Active"
-                                android:textColor="#A1A1AA"
-                                android:textSize="12sp" />
-                        </FrameLayout>
-                    </com.google.android.material.card.MaterialCardView>
-                </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRecalibrate"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_alignParentBottom="true"
+                        android:layout_margin="12dp"
+                        android:text="Recalibrate"
+                        android:textSize="11sp"
+                        android:textColor="#60A5FA"
+                        app:backgroundTint="#1E293B" />
+                </RelativeLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Step 1: Category Selection -->
+            <!-- Report Category Grid -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="STEP 1: SELECT CATEGORY"
+                android:text="REPORT CATEGORY"
                 android:textColor="#9E9E9E"
                 android:textSize="11sp"
                 android:textStyle="bold"
@@ -266,16 +190,18 @@
                             android:gravity="center"
                             android:orientation="vertical">
 
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_medical"
-                                app:tint="#F87171" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="+"
+                                android:textColor="#F87171"
+                                android:textSize="22sp"
+                                android:textStyle="bold" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
+                                android:layout_marginTop="4dp"
                                 android:text="Medical"
                                 android:textColor="#FFFFFF"
                                 android:textSize="12sp" />
@@ -291,10 +217,10 @@
                         android:layout_weight="1"
                         android:clickable="true"
                         android:focusable="true"
-                        app:cardBackgroundColor="#18181B"
+                        app:cardBackgroundColor="#0C4A6E"
                         app:cardCornerRadius="12dp"
-                        app:strokeColor="#27272A"
-                        app:strokeWidth="1dp">
+                        app:strokeColor="#38BDF8"
+                        app:strokeWidth="2dp">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -302,19 +228,20 @@
                             android:gravity="center"
                             android:orientation="vertical">
 
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_water_drop"
-                                app:tint="#38BDF8" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="💧"
+                                android:textSize="18sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
+                                android:layout_marginTop="4dp"
                                 android:text="Water"
                                 android:textColor="#FFFFFF"
-                                android:textSize="12sp" />
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -338,16 +265,16 @@
                             android:gravity="center"
                             android:orientation="vertical">
 
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_restaurant"
-                                app:tint="#FBBF24" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🍴"
+                                android:textSize="18sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
+                                android:layout_marginTop="4dp"
                                 android:text="Food"
                                 android:textColor="#FFFFFF"
                                 android:textSize="12sp" />
@@ -380,16 +307,16 @@
                             android:gravity="center"
                             android:orientation="vertical">
 
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_home"
-                                app:tint="#A78BFA" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🏠"
+                                android:textSize="18sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
+                                android:layout_marginTop="4dp"
                                 android:text="Shelter"
                                 android:textColor="#FFFFFF"
                                 android:textSize="12sp" />
@@ -416,17 +343,17 @@
                             android:gravity="center"
                             android:orientation="vertical">
 
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_person_search"
-                                app:tint="#F472B6" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="👥"
+                                android:textSize="18sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
-                                android:text="Missing People"
+                                android:layout_marginTop="4dp"
+                                android:text="Missing"
                                 android:textColor="#FFFFFF"
                                 android:textSize="11sp" />
                         </LinearLayout>
@@ -452,190 +379,23 @@
                             android:gravity="center"
                             android:orientation="vertical">
 
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@drawable/ic_more_horiz"
-                                app:tint="#9CA3AF" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="•••"
+                                android:textColor="#9CA3AF"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
+                                android:layout_marginTop="4dp"
                                 android:text="Other"
                                 android:textColor="#FFFFFF"
                                 android:textSize="12sp" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- Step 2: Priority Selection (Revealed after Category selection) -->
-            <LinearLayout
-                android:id="@+id/sectionPriority"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
-                    android:text="STEP 2: PRIORITY LEVEL"
-                    android:textColor="#9E9E9E"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.08" />
-
-                <com.google.android.material.button.MaterialButtonToggleGroup
-                    android:id="@+id/priorityToggleGroup"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    app:selectionRequired="false"
-                    app:singleSelection="true">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnLow"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:paddingHorizontal="0dp"
-                        android:insetLeft="0dp"
-                        android:insetRight="0dp"
-                        android:text="Low"
-                        android:textSize="11sp"
-                        android:textColor="#A1A1AA"
-                        app:strokeColor="#27272A" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnMedium"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:paddingHorizontal="0dp"
-                        android:insetLeft="0dp"
-                        android:insetRight="0dp"
-                        android:text="Medium"
-                        android:textSize="11sp"
-                        android:textColor="#A1A1AA"
-                        app:strokeColor="#27272A" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnHigh"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:paddingHorizontal="0dp"
-                        android:insetLeft="0dp"
-                        android:insetRight="0dp"
-                        android:text="High"
-                        android:textSize="11sp"
-                        android:textColor="#A1A1AA"
-                        app:strokeColor="#27272A" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCritical"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:paddingHorizontal="0dp"
-                        android:insetLeft="0dp"
-                        android:insetRight="0dp"
-                        android:text="Critical"
-                        android:textSize="11sp"
-                        android:textColor="#A1A1AA"
-                        app:strokeColor="#27272A" />
-                </com.google.android.material.button.MaterialButtonToggleGroup>
-            </LinearLayout>
-
-            <!-- Step 3: Incident Details & Save (Revealed after Priority selection) -->
-            <LinearLayout
-                android:id="@+id/sectionIncidentDetails"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
-                    android:text="STEP 3: INCIDENT DETAILS"
-                    android:textColor="#9E9E9E"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.08" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    app:boxBackgroundColor="#18181B"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxStrokeColor="#3F3F46"
-                    app:hintEnabled="false">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etIncidentNotes"
-                        android:layout_width="match_parent"
-                        android:layout_height="120dp"
-                        android:gravity="top|start"
-                        android:hint="Provide clear contextual details about the incident..."
-                        android:padding="16dp"
-                        android:textColor="#FFFFFF"
-                        android:textColorHint="#71717A"
-                        android:textSize="14sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <!-- Save Action -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSave"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:layout_marginTop="28dp"
-                    android:text="Save Report Offline"
-                    android:textColor="#09090B"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    app:backgroundTint="#60A5FA"
-                    app:cornerRadius="12dp"
-                    app:icon="@drawable/ic_save"
-                    app:iconGravity="textStart"
-                    app:iconTint="#09090B" />
-
-                <!-- Queue Indicator -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="24dp"
-                    android:gravity="center"
-                    android:orientation="horizontal">
-
-                    <ImageView
-                        android:layout_width="14dp"
-                        android:layout_height="14dp"
-                        android:src="@drawable/ic_sync"
-                        app:tint="#71717A" />
-
-                    <TextView
-                        android:id="@+id/tvReportId"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:text="Will queue locally as ID: FR-092"
-                        android:textColor="#71717A"
-                        android:textSize="12sp" />
                 </LinearLayout>
             </LinearLayout>
 
