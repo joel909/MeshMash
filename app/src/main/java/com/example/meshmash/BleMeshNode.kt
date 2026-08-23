@@ -24,17 +24,13 @@ import android.os.ParcelUuid
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
-/**
- * A deliberately small BLE sender/listener transport for testing with two phones.
- *
- * The listening phone is a GATT server/peripheral. The sending phone scans, connects, writes one
- * message, and disconnects. Keeping these roles separate avoids connection races on real devices.
- */
+/** The same small sender/listener transport used by [BleMeshTestActivity]. */
 @SuppressLint("MissingPermission") // The Activity checks runtime permissions before every action.
 class BleMeshNode(
     context: Context,
     private val onStatus: (String) -> Unit,
     private val onMessage: (String) -> Unit,
+    private val onSendFinished: (Boolean) -> Unit = {},
 ) {
     private val appContext = context.applicationContext
     private val bluetoothManager = appContext.getSystemService(BluetoothManager::class.java)
@@ -63,24 +59,23 @@ class BleMeshNode(
 
     val isBluetoothEnabled: Boolean
         get() = adapter?.isEnabled == true
+    val isListening: Boolean
+        get() = listening
 
-    fun listen() {
+    fun listen(): Boolean {
         val bluetoothAdapter = adapter
         if (bluetoothAdapter == null) {
             onStatus("Bluetooth is not supported on this phone")
-            return
+            return false
         }
         if (!bluetoothAdapter.isEnabled) {
-            onStatus("Turn Bluetooth on, then tap Listen again")
-            return
+            onStatus("Turn Bluetooth on, then try again")
+            return false
         }
-        if (listening) {
-            onStatus("Listening for data…")
-            return
-        }
+        if (listening) return true
         if (bluetoothAdapter.bluetoothLeAdvertiser == null) {
             onStatus("This phone does not support BLE advertising")
-            return
+            return false
         }
 
         val characteristic = BluetoothGattCharacteristic(
@@ -92,22 +87,20 @@ class BleMeshNode(
             MESH_SERVICE_UUID,
             BluetoothGattService.SERVICE_TYPE_PRIMARY,
         ).apply { addCharacteristic(characteristic) }
-
         val server = bluetoothManager.openGattServer(appContext, serverCallback)
         if (server == null) {
             onStatus("Could not open the BLE listener")
-            return
+            return false
         }
         gattServer = server
         listening = true
         onStatus("Starting listener…")
-
-        // Advertising starts from onServiceAdded. Advertising earlier can let a sender connect
-        // before Android has registered the characteristic, causing service discovery to fail.
         if (!server.addService(service)) {
             onStatus("Could not register the BLE service")
             stopListening()
+            return false
         }
+        return true
     }
 
     fun send(message: String): Boolean {
@@ -120,7 +113,6 @@ class BleMeshNode(
             onStatus("A send is already in progress")
             return false
         }
-
         val payload = message.toByteArray(StandardCharsets.UTF_8)
         if (payload.isEmpty()) return false
         if (payload.size > MAX_MESSAGE_BYTES) {
@@ -132,7 +124,6 @@ class BleMeshNode(
             onStatus("BLE scanning is unavailable")
             return false
         }
-
         pendingPayload = payload
         sending = true
         negotiatedMtu = DEFAULT_MTU
@@ -142,7 +133,6 @@ class BleMeshNode(
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .setReportDelay(0)
             .build()
-        // Do filtering in the app. Some phone chipsets incorrectly drop custom UUID filters.
         scanner.startScan(null, settings, scanCallback)
         mainHandler.removeCallbacks(sendTimeout)
         mainHandler.postDelayed(sendTimeout, SEND_TIMEOUT_MS)
@@ -152,6 +142,11 @@ class BleMeshNode(
     fun stop() {
         stopSending()
         stopListening()
+    }
+
+    /** Stops a background attempt so a user-initiated packet can start immediately. */
+    fun cancelCurrentSend() {
+        stopSending()
     }
 
     private fun startAdvertising() {
@@ -175,25 +170,23 @@ class BleMeshNode(
             ?.getCharacteristic(MESSAGE_CHARACTERISTIC_UUID)
             ?: return failSend("Listener service was not found")
         if (payload.size > negotiatedMtu - ATT_HEADER_BYTES) {
-            return failSend("Phone negotiated only $negotiatedMtu-byte MTU; send less data")
+            return failSend("Phone negotiated only $negotiatedMtu-byte MTU; packet is too large")
         }
-
         val result = gatt.writeCharacteristic(
             characteristic,
             payload,
             BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
         )
-        if (result == BluetoothGatt.GATT_SUCCESS) {
-            onStatus("Sending data…")
-        } else {
-            failSend("Could not send data (Bluetooth error $result)")
-        }
+        if (result == BluetoothGatt.GATT_SUCCESS) onStatus("Sending data…")
+        else failSend("Could not send data (Bluetooth error $result)")
     }
 
     private fun failSend(message: String) {
+        val notify = sending
         onStatus(message)
         clientGatt?.disconnect()
         stopSending()
+        if (notify) onSendFinished(false)
     }
 
     private fun stopSending() {
@@ -238,16 +231,9 @@ class BleMeshNode(
             val markerMatches = scanRecord
                 ?.getManufacturerSpecificData(MANUFACTURER_ID)
                 ?.contentEquals(MESH_MARKER) == true
-            if (!serviceMatches && !markerMatches) {
-                if (scanResultsSeen % 10 == 0) {
-                    onStatus("Scanning… saw $scanResultsSeen nearby BLE advertisements")
-                }
-                return
-            }
-
+            if (!serviceMatches && !markerMatches) return
             adapter?.bluetoothLeScanner?.stopScan(this)
             onStatus("Listener found; connecting…")
-            // This is the current overload used by Android's official platform BLE sample.
             clientGatt = result.device.connectGatt(appContext, false, clientCallback)
         }
 
@@ -265,11 +251,7 @@ class BleMeshNode(
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 gatt.close()
                 if (clientGatt === gatt) clientGatt = null
-                if (sending) {
-                    pendingPayload = null
-                    sending = false
-                    onStatus("Connection ended before data was sent")
-                }
+                if (sending) failSend("Connection ended before data was sent")
             } else if (status != BluetoothGatt.GATT_SUCCESS) {
                 failSend("Connection failed (Bluetooth error $status)")
             }
@@ -291,11 +273,18 @@ class BleMeshNode(
             characteristic: BluetoothGattCharacteristic,
             status: Int,
         ) {
+            // A callback from a connection that was preempted must not complete the new send.
+            if (!sending || clientGatt !== gatt) {
+                gatt.close()
+                return
+            }
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 onStatus("Data sent successfully")
                 pendingPayload = null
                 sending = false
+                mainHandler.removeCallbacks(sendTimeout)
                 gatt.disconnect()
+                onSendFinished(true)
             } else {
                 failSend("Send failed (Bluetooth error $status)")
             }
@@ -352,8 +341,6 @@ class BleMeshNode(
     }
 
     companion object {
-        // Bluetooth-base UUIDs are encoded compactly in legacy advertisements. This follows the
-        // current Android platform GATT server sample and works better across older OEM chipsets.
         private val MESH_SERVICE_UUID =
             UUID.fromString("00002222-0000-1000-8000-00805f9b34fb")
         private val MESSAGE_CHARACTERISTIC_UUID =

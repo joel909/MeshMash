@@ -3,10 +3,16 @@ package com.example.meshmash.mesh
 import java.nio.ByteBuffer
 import java.util.UUID
 
-enum class RequestPriority(val storageValue: Int) {
-    NORMAL(0),
-    IMPORTANT(1),
-    EMERGENCY(2),
+enum class RequestPriority(val storageValue: Int, val wireValue: String) {
+    LOW(0, "NORMAL"),
+    MEDIUM(1, "MEDIUM"),
+    HIGH(2, "HIGH"),
+    CRITICAL(3, "CRITICAL"),
+
+    // Legacy names retained so requests already stored by earlier builds still decode.
+    NORMAL(0, "NORMAL"),
+    IMPORTANT(2, "HIGH"),
+    EMERGENCY(3, "CRITICAL"),
 }
 
 enum class RequestStatus {
@@ -148,9 +154,16 @@ object MeshForwardingPolicy {
             else -> 30 * MINUTE
         }
         return when (request.priority) {
-            RequestPriority.EMERGENCY -> (baseInterval / 2).coerceAtLeast(5 * SECOND)
-            RequestPriority.IMPORTANT -> (baseInterval * 3 / 4).coerceAtLeast(5 * SECOND)
-            RequestPriority.NORMAL -> baseInterval
+            RequestPriority.CRITICAL,
+            RequestPriority.EMERGENCY,
+            -> (baseInterval / 2).coerceAtLeast(5 * SECOND)
+            RequestPriority.HIGH,
+            RequestPriority.IMPORTANT,
+            -> (baseInterval * 3 / 4).coerceAtLeast(5 * SECOND)
+            RequestPriority.MEDIUM -> (baseInterval * 7 / 8).coerceAtLeast(5 * SECOND)
+            RequestPriority.LOW,
+            RequestPriority.NORMAL,
+            -> baseInterval
         }
     }
 

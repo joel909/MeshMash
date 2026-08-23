@@ -7,11 +7,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import java.util.UUID
 
-/**
- * Persistent request buffer. There is intentionally no automatic deletion: active, delivered, and
- * resolved request IDs remain available for duplicate detection until a future retention policy is
- * explicitly added.
- */
+/** Persistent request buffer. Requests remain here until the API confirms acceptance. */
 class MeshRequestStore(context: Context) : SQLiteOpenHelper(
     context.applicationContext,
     DATABASE_NAME,
@@ -141,6 +137,12 @@ class MeshRequestStore(context: Context) : SQLiteOpenHelper(
         ).use { cursor -> cursor.readRequests() }
     }
 
+    /** Returns requests that originated on another device, newest first. */
+    fun getReceivedRequests(limit: Int = DEFAULT_QUERY_LIMIT): List<MeshRequest> {
+        val localDeviceId = getOrCreateDeviceId()
+        return getAll(limit).filter { it.originDeviceId != localDeviceId }
+    }
+
     /** Returns locally retained requests with [status], ordered for sequential server upload. */
     fun getByStatus(
         status: RequestStatus,
@@ -202,6 +204,19 @@ class MeshRequestStore(context: Context) : SQLiteOpenHelper(
             arrayOf(requestId.toDatabaseHex()),
         ) > 0
     }
+
+    /** Permanently removes a request after the API has accepted it. */
+    fun delete(requestId: UUID): Boolean = writableDatabase.delete(
+        TABLE_REQUESTS,
+        "hex($COLUMN_REQUEST_ID) = ?",
+        arrayOf(requestId.toDatabaseHex()),
+    ) > 0
+
+    fun deleteByStatus(status: RequestStatus): Int = writableDatabase.delete(
+        TABLE_REQUESTS,
+        "$COLUMN_STATUS = ?",
+        arrayOf(status.name),
+    )
 
     private fun queryById(
         requestId: UUID,

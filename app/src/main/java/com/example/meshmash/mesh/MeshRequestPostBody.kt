@@ -10,7 +10,7 @@ object MeshRequestPostBody {
         put("requestId", request.requestId.toString())
         put("originDeviceId", request.originDeviceId.toString())
         put("category", request.category)
-        put("priority", request.priority.name)
+        put("priority", request.priority.wireValue)
         put("createdAtMillis", request.createdAtMillis)
         put("requester", request.requester?.toJson() ?: JSONObject.NULL)
         put("location", request.location?.toJson() ?: JSONObject.NULL)

@@ -1,12 +1,15 @@
 package com.example.meshmash
 
+import android.Manifest
 import android.content.res.ColorStateList
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -15,6 +18,10 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputEditText
+import com.example.meshmash.mesh.MeshLocation
+import com.example.meshmash.mesh.MeshReportCategory
+import com.example.meshmash.mesh.MeshStoreForwardManager
+import com.example.meshmash.mesh.RequestPriority
 import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
@@ -32,6 +39,23 @@ class MainActivity : AppCompatActivity() {
     private var currentLat = 34.0522
     private var currentLon = -118.2437
     private var pendingSyncCount = 3
+    private var sendAfterNearbyPermissionGranted = false
+    private lateinit var meshManager: MeshStoreForwardManager
+
+    private val nearbyPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        if (hasNearbyPermissions()) {
+            meshManager.start()
+            if (sendAfterNearbyPermissionGranted) {
+                sendAfterNearbyPermissionGranted = false
+                sendCurrentReport()
+            }
+        } else {
+            sendAfterNearbyPermissionGranted = false
+            Toast.makeText(this, "Nearby devices permission is required", Toast.LENGTH_LONG).show()
+        }
+    }
 
     private lateinit var nestedScrollView: NestedScrollView
     private lateinit var sectionPriority: LinearLayout
@@ -51,6 +75,15 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        meshManager = MeshStoreForwardManager(
+            context = this,
+            onStatus = { message ->
+                if (message.startsWith("No ") || message.contains("failed", ignoreCase = true)) {
+                    runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_SHORT).show() }
+                }
+            },
+            onNewIssue = {},
+        )
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -64,6 +97,7 @@ class MainActivity : AppCompatActivity() {
         setupRecalibrateInteractivity()
         setupSaveButtonInteractivity()
         setupStatusBannerInteractivity()
+        if (hasNearbyPermissions()) meshManager.start()
     }
 
     private fun initViews() {
@@ -233,22 +267,48 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupSaveButtonInteractivity() {
         val btnSave = findViewById<MaterialButton>(R.id.btnSave)
-        btnSave.setOnClickListener {
-            val reportCategoryName = selectedCategory?.name ?: "UNKNOWN"
-            val reportPriorityName = selectedPriority?.name ?: "NORMAL"
+        btnSave.setOnClickListener { sendCurrentReport() }
+    }
 
-            val nextIdNum = Random.nextInt(100, 999)
-            val reportId = "FR-$nextIdNum"
-
-            pendingSyncCount++
-            tvPendingCount.text = "$pendingSyncCount Pending"
-            tvReportId.text = "Will queue locally as ID: $reportId"
-
-            val summary = "Saved offline: [$reportId]\nCategory: $reportCategoryName\nPriority: $reportPriorityName"
-            Toast.makeText(this, summary, Toast.LENGTH_LONG).show()
-
-            etIncidentNotes.text?.clear()
+    private fun sendCurrentReport() {
+        val category = selectedCategory
+        val priority = selectedPriority
+        val details = etIncidentNotes.text?.toString()?.trim().orEmpty()
+        if (category == null || priority == null || details.isEmpty()) {
+            Toast.makeText(this, "Select a category, priority, and add details", Toast.LENGTH_LONG).show()
+            return
         }
+        if (!hasNearbyPermissions()) {
+            sendAfterNearbyPermissionGranted = true
+            nearbyPermissionLauncher.launch(BLE_PERMISSIONS)
+            return
+        }
+        if (!meshManager.isBluetoothEnabled) {
+            Toast.makeText(this, "Turn on Bluetooth, then tap again", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        meshManager.start()
+        val request = meshManager.createAndBroadcast(
+            category = MeshReportCategory.valueOf(category.name),
+            details = details,
+            priority = RequestPriority.valueOf(priority.name),
+            location = MeshLocation.fromDegrees(
+                latitude = currentLat,
+                longitude = currentLon,
+                accuracyMeters = 5f,
+                capturedAtMillis = System.currentTimeMillis(),
+            ),
+        )
+        pendingSyncCount++
+        tvPendingCount.text = "$pendingSyncCount Pending"
+        tvReportId.text = "Broadcasting for 25 seconds: ${request.requestId}"
+        Toast.makeText(this, "Updating across mesh network now", Toast.LENGTH_LONG).show()
+        etIncidentNotes.text?.clear()
+    }
+
+    private fun hasNearbyPermissions(): Boolean = BLE_PERMISSIONS.all {
+        checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun setupStatusBannerInteractivity() {
@@ -256,5 +316,18 @@ class MainActivity : AppCompatActivity() {
         bannerOffline.setOnClickListener {
             Toast.makeText(this, "$pendingSyncCount reports waiting for BLE Mesh connection", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onDestroy() {
+        meshManager.close()
+        super.onDestroy()
+    }
+
+    companion object {
+        private val BLE_PERMISSIONS = arrayOf(
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_ADVERTISE,
+        )
     }
 }

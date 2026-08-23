@@ -603,7 +603,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:layout_marginTop="28dp"
-                    android:text="Save Report Offline"
+                    android:text="Update Across Mesh Network"
                     android:textColor="#09090B"
                     android:textSize="15sp"
                     android:textStyle="bold"

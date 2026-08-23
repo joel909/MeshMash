@@ -106,7 +106,7 @@ class MeshRequestApiClient(
     }
 
     companion object {
-        const val DEFAULT_BASE_URL = "https://meshmash-pushpulllegs.onrender.com"
+        const val DEFAULT_BASE_URL = "https://cac.joeljoby.com"
         const val MESH_REQUEST_PATH = "/api/v1/mesh/requests"
         private const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 15_000
         private const val DEFAULT_READ_TIMEOUT_MILLIS = 20_000
