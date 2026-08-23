@@ -23,17 +23,21 @@ class MeshUploadWorker(
 
         val store = MeshRequestStore(applicationContext)
         return try {
-            // Older builds retained server-confirmed records instead of deleting them.
-            store.deleteByStatus(RequestStatus.DELIVERED)
-            val uploader = MeshRequestUploader(
-                store = store,
-                apiClient = MeshRequestApiClient(apiKeyProvider = { BuildConfig.MESH_API_KEY }),
-            )
+            val apiClient = MeshRequestApiClient(apiKeyProvider = { BuildConfig.MESH_API_KEY })
+            if (!apiClient.isHealthy()) return Result.retry()
+            val uploader = MeshRequestUploader(store = store, apiClient = apiClient)
+            var uploadedTotal = 0
             while (!isStopped) {
                 val summary = uploader.uploadActiveRequests(limit = UPLOAD_BATCH_SIZE)
-                if (summary.uploaded > 0) showUploadSuccess(summary.uploaded)
-                if (summary.failures.isNotEmpty()) return Result.retry()
-                if (summary.attempted < UPLOAD_BATCH_SIZE) return Result.success()
+                uploadedTotal += summary.uploaded
+                if (summary.failures.isNotEmpty()) {
+                    if (uploadedTotal > 0) showUploadSuccess(uploadedTotal)
+                    return Result.retry()
+                }
+                if (summary.attempted < UPLOAD_BATCH_SIZE) {
+                    if (uploadedTotal > 0) showUploadSuccess(uploadedTotal)
+                    return Result.success()
+                }
             }
             Result.retry()
         } finally {
@@ -46,7 +50,7 @@ class MeshUploadWorker(
         applicationContext.mainExecutor.execute {
             Toast.makeText(
                 applicationContext,
-                "$uploadedCount $label uploaded successfully",
+                "API call worked: $uploadedCount $label uploaded and marked as sent",
                 Toast.LENGTH_LONG,
             ).show()
         }
@@ -60,7 +64,7 @@ class MeshUploadWorker(
 object MeshUploadScheduler {
     private const val UNIQUE_UPLOAD_WORK = "mesh-request-api-upload"
 
-    fun enqueue(context: Context) {
+    fun enqueue(context: Context, restartImmediately: Boolean = false) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -70,7 +74,7 @@ object MeshUploadScheduler {
             .build()
         WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
             UNIQUE_UPLOAD_WORK,
-            ExistingWorkPolicy.KEEP,
+            if (restartImmediately) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
             request,
         )
     }

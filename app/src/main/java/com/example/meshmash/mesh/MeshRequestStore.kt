@@ -3,11 +3,12 @@ package com.example.meshmash.mesh
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
+import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import java.util.UUID
 
-/** Persistent request buffer. Requests remain here until the API confirms acceptance. */
+/** Persistent request history. Server-accepted requests remain stored with DELIVERED status. */
 class MeshRequestStore(context: Context) : SQLiteOpenHelper(
     context.applicationContext,
     DATABASE_NAME,
@@ -161,6 +162,13 @@ class MeshRequestStore(context: Context) : SQLiteOpenHelper(
         ).use { cursor -> cursor.readRequests() }
     }
 
+    fun countByStatus(status: RequestStatus): Int = DatabaseUtils.queryNumEntries(
+        readableDatabase,
+        TABLE_REQUESTS,
+        "$COLUMN_STATUS = ?",
+        arrayOf(status.name),
+    ).toInt()
+
     /** Returns active requests that are due, with emergencies and newer data first. */
     fun getRequestsDueForForwarding(
         nowMillis: Long = System.currentTimeMillis(),
@@ -204,19 +212,6 @@ class MeshRequestStore(context: Context) : SQLiteOpenHelper(
             arrayOf(requestId.toDatabaseHex()),
         ) > 0
     }
-
-    /** Permanently removes a request after the API has accepted it. */
-    fun delete(requestId: UUID): Boolean = writableDatabase.delete(
-        TABLE_REQUESTS,
-        "hex($COLUMN_REQUEST_ID) = ?",
-        arrayOf(requestId.toDatabaseHex()),
-    ) > 0
-
-    fun deleteByStatus(status: RequestStatus): Int = writableDatabase.delete(
-        TABLE_REQUESTS,
-        "$COLUMN_STATUS = ?",
-        arrayOf(status.name),
-    )
 
     private fun queryById(
         requestId: UUID,

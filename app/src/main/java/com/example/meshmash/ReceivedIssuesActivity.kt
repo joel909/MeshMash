@@ -23,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.meshmash.mesh.MeshRequest
 import com.example.meshmash.mesh.MeshRequestStore
+import com.example.meshmash.mesh.MeshUploadStatusTracker
 import com.example.meshmash.ui.theme.MeshMashTheme
+import java.io.Closeable
 import java.text.DateFormat
 import java.util.Date
 
@@ -31,10 +33,16 @@ import java.util.Date
 class ReceivedIssuesActivity : ComponentActivity() {
     private lateinit var requestStore: MeshRequestStore
     private var requests by mutableStateOf(emptyList<MeshRequest>())
+    private var uploadStatusObservation: Closeable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestStore = MeshRequestStore(this)
+        uploadStatusObservation = MeshUploadStatusTracker.observe { progress ->
+            if (!progress.isUploading) {
+                runOnUiThread { requests = requestStore.getReceivedRequests() }
+            }
+        }
         setContent {
             MeshMashTheme {
                 Scaffold(
@@ -73,6 +81,7 @@ class ReceivedIssuesActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        uploadStatusObservation?.close()
         requestStore.close()
         super.onDestroy()
     }
@@ -91,6 +100,9 @@ private fun IssueCard(request: MeshRequest) {
                 style = MaterialTheme.typography.titleMedium,
             )
             Text("Priority: ${request.priority.name}")
+            Text(
+                "Status: ${if (request.status == com.example.meshmash.mesh.RequestStatus.DELIVERED) "Sent" else "Pending"}",
+            )
             Text(request.payload.toString(Charsets.UTF_8))
             if (location != null) {
                 Text("Location: %.6f, %.6f".format(location.latitude, location.longitude))

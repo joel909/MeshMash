@@ -48,6 +48,7 @@
                 android:paddingVertical="12dp">
 
                 <ImageView
+                    android:id="@+id/ivConnectionStatus"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:src="@drawable/ic_offline_pin"
@@ -61,6 +62,7 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:id="@+id/tvConnectionTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Offline Mode Active"
@@ -69,6 +71,7 @@
                         android:textStyle="bold" />
 
                     <TextView
+                        android:id="@+id/tvConnectionDescription"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Changes will sync automatically when reconnected."

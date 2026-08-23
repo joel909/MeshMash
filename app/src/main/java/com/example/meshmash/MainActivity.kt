@@ -5,13 +5,21 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.location.Location
+import android.location.LocationManager
 import android.os.Bundle
+import android.os.CancellationSignal
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -23,9 +31,14 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.textfield.TextInputEditText
 import com.example.meshmash.mesh.MeshLocation
 import com.example.meshmash.mesh.MeshReportCategory
+import com.example.meshmash.mesh.MeshRequestStore
 import com.example.meshmash.mesh.MeshStoreForwardManager
+import com.example.meshmash.mesh.InternetReachabilityMonitor
+import com.example.meshmash.mesh.MeshUploadScheduler
+import com.example.meshmash.mesh.MeshUploadStatusTracker
 import com.example.meshmash.mesh.RequestPriority
-import kotlin.random.Random
+import com.example.meshmash.mesh.RequestStatus
+import java.io.Closeable
 
 class MainActivity : AppCompatActivity() {
 
@@ -41,9 +54,15 @@ class MainActivity : AppCompatActivity() {
     private var selectedPriority: PriorityLevel? = null
     private var currentLat = 34.0522
     private var currentLon = -118.2437
-    private var pendingSyncCount = 3
+    private var pendingSyncCount = 0
     private var sendAfterNearbyPermissionGranted = false
+    private var latestGpsLocation: MeshLocation? = null
+    private var gpsCancellationSignal: CancellationSignal? = null
+    private var gpsLoadingDialog: AlertDialog? = null
     private lateinit var meshManager: MeshStoreForwardManager
+    private lateinit var apiReachabilityMonitor: InternetReachabilityMonitor
+    private var uploadStatusObservation: Closeable? = null
+    private var apiOnline = false
 
     private val nearbyPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -57,6 +76,16 @@ class MainActivity : AppCompatActivity() {
         } else {
             sendAfterNearbyPermissionGranted = false
             Toast.makeText(this, "Nearby devices permission is required", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        if (hasLocationPermission()) {
+            fetchCurrentGps()
+        } else {
+            finishGpsLoading("Location permission is required to send mesh requests")
         }
     }
 
@@ -78,6 +107,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        apiReachabilityMonitor = InternetReachabilityMonitor(this)
         meshManager = MeshStoreForwardManager(
             context = this,
             onStatus = { message ->
@@ -86,7 +116,11 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_SHORT).show() }
                 }
             },
-            onNewIssue = {},
+            onNewIssue = {
+                runOnUiThread {
+                    Toast.makeText(this, "Request received", Toast.LENGTH_LONG).show()
+                }
+            },
         )
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { view, insets ->
@@ -96,13 +130,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         initViews()
+        refreshPendingCount()
+        uploadStatusObservation = MeshUploadStatusTracker.observe { progress ->
+            if (!progress.isUploading) runOnUiThread(::refreshPendingCount)
+        }
         setupCategoryInteractivity()
         setupPriorityToggleInteractivity()
         setupRecalibrateInteractivity()
         setupSaveButtonInteractivity()
         setupStatusBannerInteractivity()
+        apiReachabilityMonitor.startMonitoring { online ->
+            apiOnline = online
+            renderApiConnectivity(online)
+            if (online) MeshUploadScheduler.enqueue(this, restartImmediately = true)
+        }
         setupShowIssuesButton()
         if (hasNearbyPermissions()) meshManager.start()
+        startGpsLoading()
     }
 
     private fun initViews() {
@@ -136,7 +180,7 @@ class MainActivity : AppCompatActivity() {
             ReportCategory.FOOD to cardFood,
             ReportCategory.SHELTER to cardShelter,
             ReportCategory.MISSING_PEOPLE to cardMissingPeople,
-            ReportCategory.OTHER to cardOther
+            ReportCategory.OTHER to cardOther,
         )
 
         cards.forEach { (category, card) ->
@@ -254,20 +298,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecalibrateInteractivity() {
         val btnRecalibrate = findViewById<MaterialButton>(R.id.btnRecalibrate)
-        btnRecalibrate.setOnClickListener {
-            currentLat += (Random.nextDouble(-0.005, 0.005))
-            currentLon += (Random.nextDouble(-0.005, 0.005))
-
-            val accuracy = Random.nextInt(2, 6)
-            val altitude = Random.nextInt(75, 95)
-
-            val latStr = String.format("%.4f° N", currentLat)
-            val lonStr = String.format("%.4f° W", kotlin.math.abs(currentLon))
-            tvCoordinates.text = "$latStr, $lonStr"
-            tvAccuracyAlt.text = "Accuracy: ±${accuracy}m  •  Altitude: ${altitude}m"
-
-            Toast.makeText(this, "GPS Recalibrated", Toast.LENGTH_SHORT).show()
-        }
+        btnRecalibrate.setOnClickListener { startGpsLoading() }
     }
 
     private fun setupSaveButtonInteractivity() {
@@ -281,6 +312,11 @@ class MainActivity : AppCompatActivity() {
         val details = etIncidentNotes.text?.toString()?.trim().orEmpty()
         if (category == null || priority == null || details.isEmpty()) {
             Toast.makeText(this, "Select a category, priority, and add details", Toast.LENGTH_LONG).show()
+            return
+        }
+        val gpsLocation = latestGpsLocation
+        if (gpsLocation == null) {
+            Toast.makeText(this, "GPS is still loading. Please wait.", Toast.LENGTH_LONG).show()
             return
         }
         if (!hasNearbyPermissions()) {
@@ -298,15 +334,9 @@ class MainActivity : AppCompatActivity() {
             category = MeshReportCategory.valueOf(category.name),
             details = details,
             priority = RequestPriority.valueOf(priority.name),
-            location = MeshLocation.fromDegrees(
-                latitude = currentLat,
-                longitude = currentLon,
-                accuracyMeters = 5f,
-                capturedAtMillis = System.currentTimeMillis(),
-            ),
+            location = gpsLocation,
         )
-        pendingSyncCount++
-        tvPendingCount.text = "$pendingSyncCount Pending"
+        refreshPendingCount()
         tvReportId.text = "Broadcasting for 25 seconds: ${request.requestId}"
         Toast.makeText(this, "Updating across mesh network now", Toast.LENGTH_LONG).show()
         etIncidentNotes.text?.clear()
@@ -316,11 +346,144 @@ class MainActivity : AppCompatActivity() {
         checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
     }
 
+    private fun startGpsLoading() {
+        latestGpsLocation = null
+        gpsLoadingDialog?.dismiss()
+        val progress = ProgressBar(this).apply {
+            isIndeterminate = true
+            setPadding(48, 24, 48, 24)
+        }
+        gpsLoadingDialog = AlertDialog.Builder(this)
+            .setTitle("Fetching GPS")
+            .setMessage("Getting your current coordinates…")
+            .setView(progress)
+            .setCancelable(false)
+            .show()
+        if (hasLocationPermission()) {
+            fetchCurrentGps()
+        } else {
+            locationPermissionLauncher.launch(LOCATION_PERMISSIONS)
+        }
+    }
+
+    private fun fetchCurrentGps() {
+        val locationManager = getSystemService(LocationManager::class.java)
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            finishGpsLoading("Turn on GPS and tap Recalibrate")
+            return
+        }
+
+        gpsCancellationSignal?.cancel()
+        val signal = CancellationSignal()
+        gpsCancellationSignal = signal
+        val handler = Handler(Looper.getMainLooper())
+        val fallback = runCatching {
+            locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        }.getOrNull()
+        val timeout = Runnable {
+            if (gpsCancellationSignal === signal) {
+                signal.cancel()
+                gpsCancellationSignal = null
+                if (fallback != null) completeGpsLoading(fallback)
+                else finishGpsLoading("Could not fetch GPS. Tap Recalibrate and try again.")
+            }
+        }
+        handler.postDelayed(timeout, GPS_TIMEOUT_MS)
+        try {
+            locationManager.getCurrentLocation(
+                LocationManager.GPS_PROVIDER,
+                signal,
+                mainExecutor,
+            ) { location ->
+                if (gpsCancellationSignal !== signal) return@getCurrentLocation
+                gpsCancellationSignal = null
+                handler.removeCallbacks(timeout)
+                if (location != null) completeGpsLoading(location)
+                else if (fallback != null) completeGpsLoading(fallback)
+                else finishGpsLoading("Could not fetch GPS. Tap Recalibrate and try again.")
+            }
+        } catch (_: SecurityException) {
+            handler.removeCallbacks(timeout)
+            gpsCancellationSignal = null
+            finishGpsLoading("Location permission is required to send mesh requests")
+        }
+    }
+
+    private fun completeGpsLoading(location: Location) {
+        val capturedAt = location.time.takeIf { it > 0L } ?: System.currentTimeMillis()
+        latestGpsLocation = MeshLocation.fromDegrees(
+            latitude = location.latitude,
+            longitude = location.longitude,
+            accuracyMeters = location.accuracy.coerceAtLeast(0f),
+            capturedAtMillis = capturedAt,
+        )
+        currentLat = location.latitude
+        currentLon = location.longitude
+        val latitudeDirection = if (currentLat >= 0) "N" else "S"
+        val longitudeDirection = if (currentLon >= 0) "E" else "W"
+        tvCoordinates.text = String.format(
+            "%.4f° %s, %.4f° %s",
+            kotlin.math.abs(currentLat),
+            latitudeDirection,
+            kotlin.math.abs(currentLon),
+            longitudeDirection,
+        )
+        tvAccuracyAlt.text = String.format("Accuracy: ±%.0fm  •  GPS ready", location.accuracy)
+        gpsLoadingDialog?.dismiss()
+        gpsLoadingDialog = null
+    }
+
+    private fun finishGpsLoading(message: String) {
+        latestGpsLocation = null
+        gpsLoadingDialog?.dismiss()
+        gpsLoadingDialog = null
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
+    private fun hasLocationPermission(): Boolean =
+        checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
     private fun setupStatusBannerInteractivity() {
         val bannerOffline = findViewById<MaterialCardView>(R.id.bannerOffline)
         bannerOffline.setOnClickListener {
-            Toast.makeText(this, "$pendingSyncCount reports waiting for BLE Mesh connection", Toast.LENGTH_SHORT).show()
+            val message = if (apiOnline) {
+                "API is online; pending reports upload automatically"
+            } else {
+                "$pendingSyncCount reports waiting for the API connection"
+            }
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun renderApiConnectivity(online: Boolean) {
+        val banner = findViewById<MaterialCardView>(R.id.bannerOffline)
+        val icon = findViewById<ImageView>(R.id.ivConnectionStatus)
+        val title = findViewById<TextView>(R.id.tvConnectionTitle)
+        val description = findViewById<TextView>(R.id.tvConnectionDescription)
+        if (online) {
+            val green = Color.parseColor("#22C55E")
+            banner.setCardBackgroundColor(Color.parseColor("#0D2818"))
+            banner.strokeColor = green
+            icon.imageTintList = ColorStateList.valueOf(green)
+            tvPendingCount.setTextColor(green)
+            title.text = "Connected to network"
+            description.text = "Uploading data to server"
+        } else {
+            val orange = Color.parseColor("#FFB74D")
+            banner.setCardBackgroundColor(Color.parseColor("#2A1B0A"))
+            banner.strokeColor = orange
+            icon.imageTintList = ColorStateList.valueOf(orange)
+            tvPendingCount.setTextColor(orange)
+            title.text = "Offline Mode Active"
+            description.text = "Reports stay on this device until the API is healthy."
+        }
+    }
+
+    private fun refreshPendingCount() {
+        pendingSyncCount = MeshRequestStore(this).use { store ->
+            store.countByStatus(RequestStatus.ACTIVE)
+        }
+        tvPendingCount.text = "$pendingSyncCount Pending"
     }
 
     private fun setupShowIssuesButton() {
@@ -334,16 +497,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        gpsCancellationSignal?.cancel()
+        gpsLoadingDialog?.dismiss()
+        uploadStatusObservation?.close()
+        apiReachabilityMonitor.close()
         meshManager.close()
         super.onDestroy()
     }
 
     companion object {
         private const val BLE_LOG_TAG = "MeshMashBLE"
+        private const val GPS_TIMEOUT_MS = 20_000L
         private val BLE_PERMISSIONS = arrayOf(
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
             Manifest.permission.BLUETOOTH_ADVERTISE,
+        )
+        private val LOCATION_PERMISSIONS = arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
         )
     }
 }

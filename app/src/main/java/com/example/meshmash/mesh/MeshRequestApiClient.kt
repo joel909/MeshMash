@@ -41,7 +41,7 @@ class MeshRequestApiClient(
 
     /** Public liveness check. It deliberately does not send the API key. */
     fun isHealthy(): Boolean {
-        val connection = openConnection("$baseUrl/health", "GET")
+        val connection = openConnection("$baseUrl$HEALTH_PATH", "GET")
         return try {
             connection.responseCode in 200..299
         } catch (_: IOException) {
@@ -107,6 +107,7 @@ class MeshRequestApiClient(
 
     companion object {
         const val DEFAULT_BASE_URL = "https://cac.joeljoby.com"
+        const val HEALTH_PATH = "/health"
         const val MESH_REQUEST_PATH = "/api/v1/mesh/requests"
         private const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 15_000
         private const val DEFAULT_READ_TIMEOUT_MILLIS = 20_000

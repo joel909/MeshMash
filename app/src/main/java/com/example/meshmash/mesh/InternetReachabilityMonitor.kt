@@ -114,13 +114,12 @@ class InternetReachabilityMonitor(
         var connection: HttpURLConnection? = null
         return try {
             connection = network.openConnection(endpointUrl) as HttpURLConnection
-            connection.requestMethod = "HEAD"
+            connection.requestMethod = "GET"
             connection.instanceFollowRedirects = true
             connection.connectTimeout = CONNECTION_TIMEOUT_MS
             connection.readTimeout = READ_TIMEOUT_MS
             connection.useCaches = false
-            // Any valid HTTP response proves DNS, routing, and TLS to the domain are working.
-            connection.responseCode in 100..599
+            connection.responseCode in 200..299
         } catch (_: Exception) {
             false
         } finally {
@@ -166,7 +165,9 @@ class InternetReachabilityMonitor(
     }
 
     companion object {
-        val DEFAULT_ENDPOINT: URI = URI.create("https://hello.com/")
+        val DEFAULT_ENDPOINT: URI = URI.create(
+            MeshRequestApiClient.DEFAULT_BASE_URL + MeshRequestApiClient.HEALTH_PATH,
+        )
         const val DEFAULT_CHECK_INTERVAL_MS = 30_000L
         private const val MINIMUM_CHECK_INTERVAL_MS = 5_000L
         private const val CONNECTION_TIMEOUT_MS = 5_000

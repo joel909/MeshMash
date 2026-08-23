@@ -26,7 +26,7 @@ class MeshRequestUploader(
     private val store: MeshRequestStore,
     private val apiClient: MeshRequestApiClient,
 ) {
-    /** Uploads one request and deletes it locally only after server acceptance. */
+    /** Uploads one request and marks it delivered locally only after server acceptance. */
     fun uploadRequest(requestId: UUID): StoredMeshUploadResult {
         val request = store.get(requestId) ?: return StoredMeshUploadResult(
             requestId = requestId,
@@ -36,14 +36,14 @@ class MeshRequestUploader(
         MeshUploadStatusTracker.uploadStarted(requestId.toString())
         return try {
             val result = apiClient.upload(request)
-            if (store.delete(requestId)) {
+            if (store.updateStatus(requestId, RequestStatus.DELIVERED)) {
                 StoredMeshUploadResult(requestId, uploaded = true, duplicate = result.duplicate)
             } else {
                 StoredMeshUploadResult(
                     requestId,
                     uploaded = false,
                     duplicate = result.duplicate,
-                    failureReason = "Server accepted request, but local deletion failed",
+                    failureReason = "Server accepted request, but it could not be marked as sent",
                 )
             }
         } catch (error: Exception) {

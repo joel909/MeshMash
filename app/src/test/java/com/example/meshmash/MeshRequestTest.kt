@@ -51,6 +51,12 @@ class MeshRequestTest {
     }
 
     @Test
+    fun deliveredRequestsAreNeverForwarded() {
+        val request = request(createdAt = 0, status = RequestStatus.DELIVERED)
+        assertFalse(MeshForwardingPolicy.shouldForward(request, 1_000_000))
+    }
+
+    @Test
     fun locationUsesCompactE7Coordinates() {
         val location = MeshLocation.fromDegrees(
             latitude = 12.9715987,

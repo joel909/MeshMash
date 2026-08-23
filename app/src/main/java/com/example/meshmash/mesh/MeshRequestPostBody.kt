@@ -1,7 +1,6 @@
 package com.example.meshmash.mesh
 
 import org.json.JSONObject
-import java.util.Base64
 
 /** Builds the one-request-per-POST JSON body used by the future server uploader. */
 object MeshRequestPostBody {
@@ -12,10 +11,10 @@ object MeshRequestPostBody {
         put("category", request.category)
         put("priority", request.priority.wireValue)
         put("createdAtMillis", request.createdAtMillis)
-        put("requester", request.requester?.toJson() ?: JSONObject.NULL)
-        put("location", request.location?.toJson() ?: JSONObject.NULL)
-        put("payloadEncoding", "base64")
-        put("payload", Base64.getEncoder().encodeToString(request.payload))
+        put("requester", (request.requester ?: UNKNOWN_REQUESTER).toJson())
+        put("location", request.location?.toJson() ?: unknownLocation(request.createdAtMillis))
+        put("payloadEncoding", PAYLOAD_ENCODING)
+        put("payload", request.payload.toString(Charsets.UTF_8))
         put(
             "relayMetadata",
             JSONObject().apply {
@@ -46,5 +45,17 @@ object MeshRequestPostBody {
         put("capturedAtMillis", capturedAtMillis)
     }
 
+    private fun unknownLocation(createdAtMillis: Long) = JSONObject().apply {
+        put("latitudeE7", 0)
+        put("longitudeE7", 0)
+        put("accuracyMeters", 0.0)
+        put("capturedAtMillis", createdAtMillis)
+    }
+
     const val SCHEMA_VERSION = 1
+    const val PAYLOAD_ENCODING = "utf8"
+    private val UNKNOWN_REQUESTER = RequesterIdentity(
+        fullName = "Not provided",
+        phoneNumber = "Not provided",
+    )
 }
