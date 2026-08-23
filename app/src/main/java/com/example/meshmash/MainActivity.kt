@@ -1,6 +1,7 @@
 package com.example.meshmash
 
 import android.Manifest
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -17,6 +18,7 @@ import androidx.core.widget.NestedScrollView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.textfield.TextInputEditText
 import com.example.meshmash.mesh.MeshLocation
 import com.example.meshmash.mesh.MeshReportCategory
@@ -97,6 +99,7 @@ class MainActivity : AppCompatActivity() {
         setupRecalibrateInteractivity()
         setupSaveButtonInteractivity()
         setupStatusBannerInteractivity()
+        setupShowIssuesButton()
         if (hasNearbyPermissions()) meshManager.start()
     }
 
@@ -315,6 +318,16 @@ class MainActivity : AppCompatActivity() {
         val bannerOffline = findViewById<MaterialCardView>(R.id.bannerOffline)
         bannerOffline.setOnClickListener {
             Toast.makeText(this, "$pendingSyncCount reports waiting for BLE Mesh connection", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupShowIssuesButton() {
+        findViewById<MaterialToolbar>(R.id.toolbar).menu.add("Show all issues").apply {
+            setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            setOnMenuItemClickListener {
+                startActivity(Intent(this@MainActivity, ReceivedIssuesActivity::class.java))
+                true
+            }
         }
     }
 

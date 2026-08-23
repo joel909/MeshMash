@@ -19,6 +19,9 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.MeshMash">
         <activity
+            android:name=".ReceivedIssuesActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
